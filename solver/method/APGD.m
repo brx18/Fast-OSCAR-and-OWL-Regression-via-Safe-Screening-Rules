@@ -1,57 +1,4 @@
-function [x,info] = APGD_STR(A,b,lambda,options)
-% Adlas   Sorted L1 parameter estimation solver
-%
-% [x,info] = ADLAS(A,b,lambda,options) solves the Slope problem
-%
-%       Minimize 1/2*||Ax-b||_2^2 + sum_i (lambda_i * |x|_[i])
-%
-% where |x|_[i] denotes the i-th largest entry in |x|. The entries in
-% lambda must be nonnegative and in non-increasing order. When lambda is a
-% scalar, the above formulation is reduced to the Lasso:
-%
-%       Minimize 1/2*||Ax-b||_2^2 + lambda * ||x||_1.
-%
-% The options parameter is a structure with the following optional fields
-% with [default value]: 
-%
-%    .iterations    Maximum number of iterations                  [10,000]
-%    .verbosity     0 = nothing, 1 = major, 2 = every                  [1]
-%    .fid           File identifier for output                [1 = stdout]
-%    .optimIter     Iterations between optimality-condition checks     [1]
-%    .gradIter      Iterations between full gradient computations     [20]
-%    .tolInfeas     Maximum allowed dual infeasibility              [1e-6]
-%    .tolRelGap     Stopping criterion for relative primal-dual gap [1e-6]
-%    .xInit         Initial value of x                        [zeros(n,1)]
-%
-% The info output structure contains the following fields
-%
-%    .runtime       Runtime
-%    .Aprods        Number of products with A
-%    .ATprods       Number of products with A^T
-%    .objPrimal     Primal objective
-%    .objDual       Dual objective (possibly for infeasible dual point)
-%    .infeas        Dual infeasibility
-%    .status        Status: 1 = optimal, 2 = iterations
-%
-
-% Copyright 2013, M. Bogdan, E. van den Berg, W. Su, and E.J. Candes
-
-% This file is part of SLOPE Toolbox version 1.0.
-%
-%    The SLOPE Toolbox is free software: you can redistribute it
-%    and/or  modify it under the terms of the GNU General Public License
-%    as published by the Free Software Foundation, either version 3 of
-%    the License, or (at your option) any later version.
-%
-%    The SLOPE Toolbox is distributed in the hope that it will
-%    be useful, but WITHOUT ANY WARRANTY; without even the implied
-%    warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-%    See the GNU General Public License for more details.
-%
-%    You should have received a copy of the GNU General Public License
-%    along with the SLOPE Toolbox. If not, see
-%    <http://www.gnu.org/licenses/>.
-
+function [x,info] = APGD(A,b,lambda,options)
 % -------------------------------------------------------------
 % Start timer
 % -------------------------------------------------------------
@@ -266,7 +213,7 @@ if (nargout > 1)
    info.x         = x;
 end
 
-end % Function Adlas
+end % Function 
 
 
 % ------------------------------------------------------------------------

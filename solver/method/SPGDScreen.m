@@ -1,4 +1,4 @@
-function [x,info] = SVRGScreen_STR(A,b,lambda,options)
+function [x,info] = SPGDScreen(A,b,lambda,options)
 % -------------------------------------------------------------
 % Start timer
 % -------------------------------------------------------------
@@ -67,9 +67,9 @@ end
 iGradF = @(Z, x, y, i) (Z(i,:))'*(Z(i,:)*(x-y));
 
 
-gamma = options.gamma;
-batch = options.batch;
-P     = options.loop;
+gamma = 0.1/L; 
+batch = 50;
+P = n/batch;
 
 
 % -------------------------------------------------------------
@@ -216,7 +216,7 @@ if (nargout > 1)
     info.active    = active(1:curr);
 end
 
-end % Function Adlas
+end % Function 
 
 
 % ------------------------------------------------------------------------

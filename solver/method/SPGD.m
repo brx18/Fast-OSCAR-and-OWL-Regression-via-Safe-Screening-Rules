@@ -1,4 +1,4 @@
-function [x,info] = SVRGScreen_STR(A,b,lambda,options)
+function [x,info] = SPGD(A,b,lambda,options)
 % -------------------------------------------------------------
 % Start timer
 % -------------------------------------------------------------
@@ -14,8 +14,8 @@ verbosity  = getDefaultField(options,'verbosity',1);
 fid        = getDefaultField(options,'fid',1);
 optimIter  = getDefaultField(options,'optimIter',1);
 gradIter   = getDefaultField(options,'gradIter',20);
-tolInfeas  = getDefaultField(options,'tolInfeas',1e-6);
-tolRelGap  = getDefaultField(options,'tolRelGap',1e-6);
+tolInfeas  = getDefaultField(options,'tolInfeas',1e-9);
+tolRelGap  = getDefaultField(options,'tolRelGap',1e-9);
 xInit      = getDefaultField(options,'xInit',[]);
 
 
@@ -24,12 +24,12 @@ xInit      = getDefaultField(options,'xInit',[]);
 % -------------------------------------------------------------
 
 % Get problem dimension
-d = size(A,2);
-n = size(A,1);
+n = size(A,2);
+m = size(A,1);
 
 % Get initial lower bound on the Lipschitz constant
 s = RandStream('mt19937ar','Seed',0);
-x = randn(s,d,1); x = x / norm(x,2);
+x = randn(s,n,1); x = x / norm(x,2);
 x = A'*(A*x);
 L = norm(x,2)*2;
 
@@ -40,7 +40,7 @@ STATUS_ITERATIONS = 2;
 STATUS_MSG = {'Optimal','Iteration limit reached'};
 
 % Initialize parameters and iterates
-if (isempty(xInit)), xInit = zeros(d,1); end
+if (isempty(xInit)), xInit = zeros(n,1); end;
 
 lambda  = lambda(:);
 b       = b(:);
@@ -50,10 +50,7 @@ iter    = 0;
 status  = STATUS_RUNNING;
 Aprods  = 2;
 ATprods = 1;
-l2      = vecnorm(A,2)';
-prev    = d;
-curr    = d;
-active  = (1:d)';
+x_tilde = x;
 
 
 proxFunction = @(v1,v2) proxSortedL1(v1,v2);
@@ -63,54 +60,48 @@ if (verbosity > 0)
    fprintf(fid,'%5s  %9s   %9s  %9s  %9s\n','Iter','||r||_2','Gap','Infeas.','Rel. gap');
 end
 
-iGradF = @(Z, x, y, i) (Z(i,:))'*(Z(i,:)*(x-y));
+iGradF = @(x,y, i) (A(i,:))'*(A(i,:)*(x-y));
+
+gamma = 0.1/L; 
+batch = 50;
+P = n/batch;
 
 
-gamma = options.gamma; 
-batch = options.batch;
-P     = options.loop;
-
- 
 % -------------------------------------------------------------
 % Main loop
 % -------------------------------------------------------------
 while (true)  
    % Compute the gradient at f(y)
+   %if (true)
       r = Ax-b;
       g = A'*r;
       f = (r'*r) / 2;
-         
+   
    % Increment iteration count
    iter = iter + 1;
 
    % Check optimality conditions
    if ((mod(iter,optimIter) == 0))
       % Compute 'dual', check infeasibility and gap
+
          gs  = sort(abs(g),'descend');
          ys  = sort(abs(x),'descend');
          infeas = max(max(cumsum(gs-lambda)),0);
-         
-         
-         g_max = gs./lambda;
-         dual_scaling = max(1, max(g_max));
-         
-         theta = r/dual_scaling;
-         f_dual = (theta'*theta) / 2;
       
          % Compute primal and dual objective
-         objPrimal = f + lambda'*ys;
-         objDual_scaled = -f_dual - theta'*b;
-         objDual = -f - r'*b;
-         
-         Gap_scaled = objPrimal - objDual_scaled;
+         objPrimal =  f + lambda'*ys;
+         objDual   = -f - r'*b;
+
          Gap = objPrimal - objDual;
-         absGap = abs(Gap);
+         absGap = abs(objPrimal - objDual);
       
       % Format string
       if (verbosity > 0)
          str = sprintf('   %9.2e  %9.2e  %9.2e',Gap, infeas/lambda(1), absGap / max(1,objPrimal));
       end
       
+      obj(iter) =  objPrimal;
+      time(iter)   = cputime - t0;
       
       % Check primal-dual gap
       if ((absGap/max(1,objPrimal) < tolRelGap) && ...
@@ -142,60 +133,22 @@ while (true)
       end
       break;
    end
-      
-   index_tmp = active; 
-    % Conduct the screening  
-    if ((mod(iter, s) == 0))
-            left = abs(g)/dual_scaling + sqrt(2*Gap_scaled)*l2;
-            right = lambda(curr);
-            index = find(left > right);
-            curr = size(index,1);
-            
-            % Iterative strategy
-            while (1)                                                                                            
-                right = lambda(curr);               
-                index = find(left > right);
-                size_tmp = curr;              
-                curr = size(index,1);                
-                if size_tmp == curr
-                    break;
-                end
-            end 
-%         
-
-        % Eliminating inactive variables
-        if curr < prev 
-            for i = 1:curr  %new
-                active(i) = index_tmp(index(i));
-            end
-                x = x(index);    
-                g = g(index);      
-                A = A(:,index);          
-                l2 = l2(index);
-                lambda = lambda(1:curr);
-        end
-    end
     
-    nnz(iter) = curr;
-    prev = curr;
-    x_tilde = x;
-    g_tilde = g/n;
-    
-   % Proximal SVRG update
-   for p = 1:P          
-       j = randsample(1:n,batch);                     
-       Delta_Gj = iGradF(A,x,x_tilde,j); 
+   g_tilde = g/m; 
+   
+   for p = 1:P           
+       j = randsample(1:m,batch);     
+       Delta_Gj= iGradF(x,x_tilde,j);     
+       v = Delta_Gj/batch + g_tilde;  
 
-       v = Delta_Gj/batch + g_tilde;         
        % Compute prox mapping
-       x = proxFunction(x - gamma*v*n, lambda*gamma);                       
-       Aprods = Aprods + 1;      
+       x = proxFunction(x - gamma*v*m, lambda*gamma);           
+       Aprods = Aprods + 1;             
    end
    
    %x_tilde = sum_x/P;
-   x_tilde = x;   
-   Ax = A*x_tilde;
-     
+   x_tilde = x;
+   Ax = A*x_tilde;   
 end
 
 
@@ -203,6 +156,8 @@ end
 info = struct();
 if (nargout > 1)
    info.runtime   = cputime - t0;
+   info.time      = time;
+   info.obj       = obj;
    info.Aprods    = Aprods + ceil(iter / gradIter);
    info.ATprods   = ATprods + iter;
    info.objPrimal = objPrimal;
@@ -210,9 +165,7 @@ if (nargout > 1)
    info.infeas    = infeas;
    info.status    = status;
    info.L         = L;
-   info.nnz       = nnz;
    info.x         = x;
-   info.active    = active(1:curr);
 end
 
 end % Function Adlas
@@ -227,4 +180,5 @@ function opt = getDefaultField(data,field,default)
       opt = default;
    end
 end
+
 

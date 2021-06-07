@@ -1,4 +1,4 @@
-function [x,info] = APGDScreen_STR(A,b,lambda,options)
+function [x,info] = APGDScreen(A,b,lambda,options)
 % -------------------------------------------------------------
 % Start timer
 % -------------------------------------------------------------
@@ -230,7 +230,7 @@ if (nargout > 1)
     info.active    = active(1:curr);
 end
 
-end % Function Adlas
+end % Function 
 
 
 % ------------------------------------------------------------------------
