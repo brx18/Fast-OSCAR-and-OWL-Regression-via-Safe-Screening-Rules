@@ -9,7 +9,7 @@ The script run.m runs four functions to solve OWL regression, which includes 1) 
 
 * APGD: An accelerated proximal gradient method (FISTA-type);
 * APGDScreen: APGD method with our proposed screening;
-* SPGD: An proximal stochastic variance-reduced method (ProxSVRG);
-* SPGDScreen: An ProxSVRG method with our proposed screening.
+* SPGD: A proximal stochastic variance-reduced method (ProxSVRG);
+* SPGDScreen: A ProxSVRG method with our proposed screening.
 
 Please find the reference in our paper.
